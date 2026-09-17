@@ -1,6 +1,6 @@
 # Circularization Report
 
-This document summarizes the first 10 lines from each statistics file in stats/ and lists all images available in snapshots/.
+This document summarizes the first 10 lines from each statistics file in the stats/ directory and lists the available images in the snapshots/ directory.
 
 ## Statistics summary
 
