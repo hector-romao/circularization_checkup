@@ -48,7 +48,8 @@ C_3234-7775-10402+7775+3234-	10	27279
 
 ### stats/chloroplast/flye_pt_best.fa_20kb_junction.depth.txt
 
-`	ext
+```
+
 contig_81_1	1	25
 contig_81_1	2	25
 contig_81_1	3	25
@@ -59,7 +60,8 @@ contig_81_1	7	26
 contig_81_1	8	27
 contig_81_1	9	27
 contig_81_1	10	27
-`
+
+```
 
 ### stats/chloroplast/flye_pt_best.fa_20kb_junction.flagstat.txt
 
