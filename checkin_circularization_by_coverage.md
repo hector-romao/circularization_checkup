@@ -1,237 +1,283 @@
-# Getting the 20kb window and end (10kb upstream and 10kb downstream)
-cd /media/lgbio-nas1/hectorromao/Anacardium/checking_circularization
-mkdir -p {junction/chloroplast,junction/mitochondria}
+# Circularization checkup by coverage
 
-for i in genomes/Chloroplast/*.fa; do
-    seqkit subseq -r 1:10000 "$i" > "junction/chloroplast/$(basename "$i").temp1"
-    seqkit subseq -r -10000:-1 "$i" > "junction/chloroplast/$(basename "$i").temp2"
-    seqkit concat "junction/chloroplast/$(basename "$i").temp2" "junction/chloroplast/$(basename "$i").temp1" >  "junction/chloroplast/$(basename "$i")_20kb_junction.fasta"
-done
+This workflow was designed to evaluate alternative genome assemblies and to estimate which assembly provides the strongest evidence of circularization. The analysis compares candidate assemblies for chloroplast and mitochondrial genomes by measuring support for the junction that connects the ends of the circular molecule.
 
+The main idea is simple: if a genome is truly circular, reads should support the junction between the end and the beginning of the sequence. By measuring that support with robust metrics, we can compare assemblies and select the one that best fits the expected circular structure.
 
-for i in genomes/Mitochondria/*.fa; do
-    seqkit subseq -r 1:10000 "$i" > "junction/mitochondria/$(basename "$i").temp1"
-    seqkit subseq -r -10000:-1 "$i" > "junction/mitochondria/$(basename "$i").temp2"
-    seqkit concat "junction/mitochondria/$(basename "$i").temp2" "junction/mitochondria/$(basename "$i").temp1" >  "junction/mitochondria/$(basename "$i")_20kb_junction.fasta"
-done
+## Overview
 
-rm junction/*/*temp*
+The workflow does the following:
 
+1. Extracts the terminal 10 kb from both ends of each assembled contig.
+2. Concatenates them to generate a synthetic 20 kb circularization region.
+3. Maps long reads against each candidate junction sequence.
+4. Summarizes alignment quality using `samtools`.
+5. Counts how many reads span the junction.
+6. Produces IGV snapshots to visually confirm the signal around the junction.
 
-# Aligning the reads against the genome
+---
 
-## Organizing the environtment
+## Requirements
 
-mkdir -p mapping/{chloroplast,mitochondria}
-mkdir -p stats/{chloroplast,mitochondria}
-mkdir -p tablet/{chloroplast,mitochondria}
+The pipeline expects the following tools to be installed and available in the environment:
 
+- `seqkit`
+- `minimap2`
+- `samtools`
+- `IGV`
+- `xvfb-run` (when running IGV in a headless Linux session)
 
-REFDIR_mt=/media/lgbio-nas1/hectorromao/Anacardium/checking_circularization/junction/mitochondria
-OUTDIR_mt=/media/lgbio-nas1/hectorromao/Anacardium/checking_circularization/mapping/mitochondria
-FASTQ=/media/lgbio-nas1/renatadias/genoma-cajuzinho/2.Filtering_raw_reads/Ahu_trimmed_q20_l500.fastq.gz
+---
 
+## Project structure
 
-REFDIR_pt=/media/lgbio-nas1/hectorromao/Anacardium/checking_circularization/junction/chloroplast
-OUTDIR_pt=/media/lgbio-nas1/hectorromao/Anacardium/checking_circularization/mapping/chloroplast
-FASTQ=/media/lgbio-nas1/renatadias/genoma-cajuzinho/2.Filtering_raw_reads/Ahu_trimmed_q20_l500.fastq.gz
+```text
+.
+├── README.md
+├── checkin_circularization_by_coverage.md
+├── genomes/
+│   ├── Chloroplast/
+│   └── Mitochondria/
+├── junction/
+│   ├── chloroplast/
+│   └── mitochondria/
+├── mapping/
+│   ├── chloroplast/
+│   └── mitochondria/
+├── snapshots/
+├── stats/
+│   ├── chloroplast/
+│   └── mitochondria/
+└── .git/
+```
 
+---
 
+## 1) Build the 20 kb circularization window
 
-## aligning
+The first step creates a synthetic 20 kb region by taking the last 10 kb of the sequence, the first 10 kb of the same sequence, and joining them in the order expected for a circular molecule.
 
-for ref in "$REFDIR_pt"/*.fasta; do
-
-    name=$(basename "$ref" .fasta)
-
-    echo "========================================"
-    echo "Mapping: $name"
-    echo "========================================"
-
-    minimap2 \
-        -ax map-ont \
-        -t 48 \
-        "$ref" \
-        "$FASTQ" \
-    | samtools sort \
-        -@ 48 \
-        -o "$OUTDIR_pt/${name}.bam" -
-
-    samtools index \
-        "$OUTDIR_pt/${name}.bam"
-
-done
-
-
-for ref in "$REFDIR_mt"/*.fasta; do
-
-    name=$(basename "$ref" .fasta)
-
-    echo "========================================"
-    echo "Mapping: $name"
-    echo "========================================"
-
-    minimap2 \
-        -ax map-ont \
-        -t 48 \
-        "$ref" \
-        "$FASTQ" \
-    | samtools sort \
-        -@ 48 \
-        -o "$OUTDIR_mt/${name}.bam" -
-
-    samtools index \
-        "$OUTDIR_mt/${name}.bam"
-
-done
-
-## How many reads were aligned against each genome
-
-for bam in mapping/chloroplast/*.bam; do
-
-    name=$(basename "$bam" .bam)
-
-    samtools flagstat  -@ 24 "$bam" \
-        > "stats/chloroplast/${name}.flagstat.txt"
-
-done
-
-for bam in mapping/mitochondria/*.bam; do
-
-    name=$(basename "$bam" .bam)
-
-    samtools flagstat -@ 24 "$bam" \
-        > "stats/mitochondria/${name}.flagstat.txt"
-
-done
-
-
-## Getting the depth
-
-for bam in mapping/chloroplast/*.bam; do
-
-    name=$(basename "$bam" .bam)
-
-    samtools depth  -@ 24 "$bam" \
-        > "stats/chloroplast/${name}.depth.txt"
-
-done
-
-for bam in mapping/mitochondria/*.bam; do
-
-    name=$(basename "$bam" .bam)
-
-    samtools depth -@ 24 "$bam" \
-        > "stats/mitochondria/${name}.depth.txt"
-
-done
-
-
-## Checking how many reads goes through the junction
-
-### To chloroplast
-
-declare -A CHLOROPLAST
-
-for fasta in genomes/Chloroplast/*.fa; do
-    name=$(basename "$fasta" .fa)
-    contig=$(grep '^>' "$fasta" | sed 's/^>//' | awk '{print $1}')
-
-    CHLOROPLAST["$name"]="$contig"
-done
-
-
-for name in "${!CHLOROPLAST[@]}"; do
-    contig="${CHLOROPLAST[$name]}"
-
-    echo "Processing: $name"
-    echo "Contig: $contig"
-
-    samtools view -F 0x900 \
-        "mapping/chloroplast/${name}.fa_20kb_junction.bam" \
-        "${contig}:9900-9999" |
-        cut -f1 |
-        sort -u > "/tmp/${name}_left.txt"
-
-    samtools view -F 0x900 \
-        "mapping/chloroplast/${name}.fa_20kb_junction.bam" \
-        "${contig}:10001-10100" |
-        cut -f1 |
-        sort -u > "/tmp/${name}_right.txt"
-
-    comm -12 \
-        "/tmp/${name}_left.txt" \
-        "/tmp/${name}_right.txt" |
-        wc -l > "stats/chloroplast/${name}_reads_across_junction.txt"
-done
-
-
-### For mitochondria
-
-declare -A MITOCHONDRIA
-
-for fasta in genomes/Mitochondria/*.fa; do
-    name=$(basename "$fasta" .fa)
-    contig=$(grep '^>' "$fasta" | sed 's/^>//' | awk '{print $1}')
-
-    MITOCHONDRIA["$name"]="$contig"
-done
-
-for fasta in genomes/Chloroplast/*.fa; do
-    name=$(basename "$fasta" .fa)
-    contig=$(grep '^>' "$fasta" | sed 's/^>//' | awk '{print $1}')
-    MITOCHONDRIA["$name"]="$contig"
-done
-
-for name in "${!MITOCHONDRIA[@]}"; do
-    contig="${MITOCHONDRIA[$name]}"
-
-    echo "Processing: $name"
-    echo "Contig: $contig"
-
-    samtools view -F 0x900 \
-        "mapping/mitochondria/${name}.fa_20kb_junction.bam" \
-        "${contig}:9900-9999" |
-        cut -f1 |
-        sort -u > "/tmp/${name}_left.txt"
-
-    samtools view -F 0x900 \
-        "mapping/mitochondria/${name}.fa_20kb_junction.bam" \
-        "${contig}:10001-10100" |
-        cut -f1 |
-        sort -u > "/tmp/${name}_right.txt"
-
-    comm -12 \
-        "/tmp/${name}_left.txt" \
-        "/tmp/${name}_right.txt" |
-        wc -l > "stats/mitochondria/${name}_reads_across_junction.txt"
-done
-
-
-
-## IGV graphics
-
+```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ============================================================
-# CONFIGURAÇÕES — ajuste só esses caminhos, se precisar
-# ============================================================
-BASE="/media/lgbio-nas1/hectorromao/Anacardium/checking_circularization"
+BASE="$(pwd)"
+mkdir -p "$BASE/junction/chloroplast" "$BASE/junction/mitochondria"
+
+# Build the 20 kb circularization window for chloroplast assemblies.
+for fasta in "$BASE"/genomes/Chloroplast/*.fa; do
+    sample_name=$(basename "$fasta" .fa)
+
+    # Extract the first 10 kb and the last 10 kb.
+    seqkit subseq -r 1:10000 "$fasta" > "$BASE/junction/chloroplast/${sample_name}.temp1"
+    seqkit subseq -r -10000:-1 "$fasta" > "$BASE/junction/chloroplast/${sample_name}.temp2"
+
+    # Concatenate the two ends to recreate a circular-junction representation.
+    seqkit concat \
+        "$BASE/junction/chloroplast/${sample_name}.temp2" \
+        "$BASE/junction/chloroplast/${sample_name}.temp1" \
+        > "$BASE/junction/chloroplast/${sample_name}_20kb_junction.fasta"
+done
+
+# Build the 20 kb circularization window for mitochondrial assemblies.
+for fasta in "$BASE"/genomes/Mitochondria/*.fa; do
+    sample_name=$(basename "$fasta" .fa)
+
+    seqkit subseq -r 1:10000 "$fasta" > "$BASE/junction/mitochondria/${sample_name}.temp1"
+    seqkit subseq -r -10000:-1 "$fasta" > "$BASE/junction/mitochondria/${sample_name}.temp2"
+
+    seqkit concat \
+        "$BASE/junction/mitochondria/${sample_name}.temp2" \
+        "$BASE/junction/mitochondria/${sample_name}.temp1" \
+        > "$BASE/junction/mitochondria/${sample_name}_20kb_junction.fasta"
+done
+
+# Remove temporary files after the final junction FASTA has been generated.
+rm -f "$BASE"/junction/*/*.temp1 "$BASE"/junction/*/*.temp2
+```
+
+---
+
+## 2) Align reads against each junction sequence
+
+The next step maps the read set against each circularization candidate and stores the results in `mapping/`.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE="$(pwd)"
+FASTQ="/path/to/reads.fastq.gz"
+
+mkdir -p "$BASE/mapping/chloroplast" "$BASE/mapping/mitochondria"
+mkdir -p "$BASE/stats/chloroplast" "$BASE/stats/mitochondria"
+
+# Map reads against chloroplast junction candidates.
+for ref in "$BASE"/junction/chloroplast/*.fasta; do
+    sample_name=$(basename "$ref" .fasta)
+
+    echo "========================================"
+    echo "Mapping chloroplast: $sample_name"
+    echo "========================================"
+
+    minimap2 \
+        -ax map-ont \
+        -t 48 \
+        "$ref" \
+        "$FASTQ" \
+    | samtools sort \
+        -@ 48 \
+        -o "$BASE/mapping/chloroplast/${sample_name}.bam" -
+
+    samtools index "$BASE/mapping/chloroplast/${sample_name}.bam"
+done
+
+# Map reads against mitochondrial junction candidates.
+for ref in "$BASE"/junction/mitochondria/*.fasta; do
+    sample_name=$(basename "$ref" .fasta)
+
+    echo "========================================"
+    echo "Mapping mitochondria: $sample_name"
+    echo "========================================"
+
+    minimap2 \
+        -ax map-ont \
+        -t 48 \
+        "$ref" \
+        "$FASTQ" \
+    | samtools sort \
+        -@ 48 \
+        -o "$BASE/mapping/mitochondria/${sample_name}.bam" -
+
+    samtools index "$BASE/mapping/mitochondria/${sample_name}.bam"
+done
+```
+
+---
+
+## 3) Collect BAM summary statistics
+
+This step stores alignment metrics that describe how many reads map confidently and how much coverage the reads provide to each candidate assembly.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE="$(pwd)"
+
+# Compute flagstat summaries for chloroplast mappings.
+for bam in "$BASE"/mapping/chloroplast/*.bam; do
+    sample_name=$(basename "$bam" .bam)
+    samtools flagstat -@ 24 "$bam" > "$BASE/stats/chloroplast/${sample_name}.flagstat.txt"
+done
+
+# Compute flagstat summaries for mitochondrial mappings.
+for bam in "$BASE"/mapping/mitochondria/*.bam; do
+    sample_name=$(basename "$bam" .bam)
+    samtools flagstat -@ 24 "$bam" > "$BASE/stats/mitochondria/${sample_name}.flagstat.txt"
+done
+
+# Compute depth profiles for chloroplast mappings.
+for bam in "$BASE"/mapping/chloroplast/*.bam; do
+    sample_name=$(basename "$bam" .bam)
+    samtools depth -@ 24 "$bam" > "$BASE/stats/chloroplast/${sample_name}.depth.txt"
+done
+
+# Compute depth profiles for mitochondrial mappings.
+for bam in "$BASE"/mapping/mitochondria/*.bam; do
+    sample_name=$(basename "$bam" .bam)
+    samtools depth -@ 24 "$bam" > "$BASE/stats/mitochondria/${sample_name}.depth.txt"
+done
+```
+
+---
+
+## 4) Count reads spanning the circularization junction
+
+The most informative metric for circularization is the number of reads that map to both sides of the synthetic junction. A stronger circularized assembly typically shows a larger number of reads spanning the boundary.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE="$(pwd)"
+
+# Define a helper function to count reads spanning the junction.
+count_reads_across_junction() {
+    local organelle="$1"
+    local sample_name="$2"
+    local contig="$3"
+
+    # Reads mapping just before the junction.
+    samtools view -F 0x900 \
+        "$BASE/mapping/${organelle}/${sample_name}.bam" \
+        "${contig}:9900-9999" \
+    | cut -f1 \
+    | sort -u > "/tmp/${sample_name}_left.txt"
+
+    # Reads mapping just after the junction.
+    samtools view -F 0x900 \
+        "$BASE/mapping/${organelle}/${sample_name}.bam" \
+        "${contig}:10001-10100" \
+    | cut -f1 \
+    | sort -u > "/tmp/${sample_name}_right.txt"
+
+    # Keep only reads detected in both regions.
+    comm -12 \
+        "/tmp/${sample_name}_left.txt" \
+        "/tmp/${sample_name}_right.txt" \
+    | wc -l > "$BASE/stats/${organelle}/${sample_name}_reads_across_junction.txt"
+}
+
+# Evaluate chloroplast assemblies.
+declare -A CHLOROPLAST
+for fasta in "$BASE"/genomes/Chloroplast/*.fa; do
+    sample_name=$(basename "$fasta" .fa)
+    contig=$(grep '^>' "$fasta" | sed 's/^>//' | awk '{print $1}')
+    CHLOROPLAST["$sample_name"]="$contig"
+done
+
+for sample_name in "${!CHLOROPLAST[@]}"; do
+    contig="${CHLOROPLAST[$sample_name]}"
+    echo "Processing chloroplast: $sample_name"
+    count_reads_across_junction "chloroplast" "$sample_name" "$contig"
+done
+
+# Evaluate mitochondrial assemblies.
+declare -A MITOCHONDRIA
+for fasta in "$BASE"/genomes/Mitochondria/*.fa; do
+    sample_name=$(basename "$fasta" .fa)
+    contig=$(grep '^>' "$fasta" | sed 's/^>//' | awk '{print $1}')
+    MITOCHONDRIA["$sample_name"]="$contig"
+done
+
+for sample_name in "${!MITOCHONDRIA[@]}"; do
+    contig="${MITOCHONDRIA[$sample_name]}"
+    echo "Processing mitochondria: $sample_name"
+    count_reads_across_junction "mitochondria" "$sample_name" "$contig"
+done
+```
+
+---
+
+## 5) Generate IGV snapshots
+
+This section produces visual evidence around the putative circularization site. The final goal is to inspect read support around the junction in a genome browser and compare the different assemblies side by side.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE="$(pwd)"
 JUNCTION_DIR="$BASE/junction"
 MAPPING_DIR="$BASE/mapping"
 SNAPSHOT_DIR="$BASE/snapshots"
 BATCH_FILE="$BASE/igv_batch_all.bat"
 
 mkdir -p "$SNAPSHOT_DIR"
-: > "$BATCH_FILE"   # cria/zera o arquivo de batch
+: > "$BATCH_FILE"
 
-# ============================================================
-# FUNÇÃO: escreve um bloco de comandos IGV para UMA montagem
-# (edite aqui as preferências/zooms — a mudança vale pra
-#  todas as combinações automaticamente)
-# ============================================================
-add_block () {
+add_block() {
     local organelle="$1"
     local fasta="$2"
     local bam="$3"
@@ -263,10 +309,6 @@ snapshot ${organelle}_${label}_400bp.png
 EOF
 }
 
-# ============================================================
-# LOOP: para cada organela (subpasta de mapping/), casa cada
-# BAM presente com o FASTA de mesmo nome em junction/
-# ============================================================
 n_ok=0
 n_skip=0
 
@@ -274,19 +316,19 @@ for organelle_dir in "$MAPPING_DIR"/*/; do
     organelle=$(basename "$organelle_dir")
 
     for bam in "$organelle_dir"*.bam; do
-        [ -e "$bam" ] || continue   # pasta sem nenhum .bam, ignora
+        [ -e "$bam" ] || continue
 
-        base=$(basename "$bam" .bam)
-        fasta="$JUNCTION_DIR/$organelle/${base}.fasta"
+        sample_name=$(basename "$bam" .bam)
+        fasta="$JUNCTION_DIR/$organelle/${sample_name}.fasta"
 
         if [ ! -f "$fasta" ]; then
-            echo "AVISO: fasta não encontrado para $bam" >&2
-            echo "       esperado em: $fasta" >&2
+            echo "Warning: FASTA not found for $bam" >&2
+            echo "Expected path: $fasta" >&2
             n_skip=$((n_skip + 1))
             continue
         fi
 
-        echo "  [$organelle] $base"
+        echo "[$organelle] $sample_name"
         add_block "$organelle" "$fasta" "$bam"
         n_ok=$((n_ok + 1))
     done
@@ -294,14 +336,32 @@ done
 
 echo "exit" >> "$BATCH_FILE"
 
-echo ""
-echo "Blocos adicionados: $n_ok"
-echo "Combinações puladas (sem fasta correspondente): $n_skip"
-echo "Batch gerado em: $BATCH_FILE"
-echo ""
-echo "Para rodar:"
+echo "Blocks added: $n_ok"
+echo "Missing FASTA files: $n_skip"
+echo "Batch file generated at: $BATCH_FILE"
+echo "Run with:"
 echo "  igv.sh -b $BATCH_FILE"
 
+# Example for headless execution:
+# xvfb-run --auto-servernum IGV_Linux_2.19.2/igv.sh -b "$BATCH_FILE"
+```
 
+---
 
-xvfb-run --auto-servernum IGV_Linux_2.19.2/igv.sh -b
+## Interpretation of the results
+
+The best assembly is not necessarily the one with the longest sequence or the highest total read coverage. In this project, the assembly is considered more promising when it shows:
+
+- strong read support at the circularization boundary;
+- high coverage across the junction region;
+- many reads spanning both sides of the junction;
+- consistent signal in the IGV snapshots;
+- no obvious read dropout or abnormal coverage interruption near the junction.
+
+This repository is meant to support assembly selection with quantitative evidence, not only visual inspection.
+
+---
+
+## Final note
+
+This project is a comparative framework for assembly evaluation. It is especially useful when the goal is to choose the most convincing circularized genome reconstruction from multiple candidates produced with different assembly methods or parameter sets.
