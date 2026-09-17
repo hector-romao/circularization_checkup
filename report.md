@@ -6,13 +6,13 @@ This document summarizes the first 10 lines from each statistics file in the sta
 
 ### stats/chloroplast/01_PMAT2_first_run_pt_reads_across_junction.txt
 
-`	ext
+```	ext
 0
-`
+```
 
 ### stats/chloroplast/03_PMAT2_reassembly_REFERENCE_pt.fa_20kb_junction.depth.txt
 
-`	ext
+```	ext
 C_3234-7775-10402+7775+3234-	1	27150
 C_3234-7775-10402+7775+3234-	2	27175
 C_3234-7775-10402+7775+3234-	3	27186
@@ -23,11 +23,11 @@ C_3234-7775-10402+7775+3234-	7	27270
 C_3234-7775-10402+7775+3234-	8	27273
 C_3234-7775-10402+7775+3234-	9	27269
 C_3234-7775-10402+7775+3234-	10	27279
-`
+```
 
 ### stats/chloroplast/03_PMAT2_reassembly_REFERENCE_pt.fa_20kb_junction.flagstat.txt
 
-`	ext
+```	ext
 2017818 + 0 in total (QC-passed reads + QC-failed reads)
 2010918 + 0 primary
 0 + 0 secondary
@@ -38,13 +38,13 @@ C_3234-7775-10402+7775+3234-	10	27279
 75987 + 0 primary mapped (3.78% : N/A)
 0 + 0 paired in sequencing
 0 + 0 read1
-`
+```
 
 ### stats/chloroplast/03_PMAT2_reassembly_REFERENCE_pt_reads_across_junction.txt
 
-`	ext
+```	ext
 12156
-`
+```
 
 ### stats/chloroplast/flye_pt_best.fa_20kb_junction.depth.txt
 
@@ -65,7 +65,7 @@ contig_81_1	10	27
 
 ### stats/chloroplast/flye_pt_best.fa_20kb_junction.flagstat.txt
 
-`	ext
+```	ext
 2035576 + 0 in total (QC-passed reads + QC-failed reads)
 2010918 + 0 primary
 24155 + 0 secondary
@@ -76,17 +76,17 @@ contig_81_1	10	27
 25811 + 0 primary mapped (1.28% : N/A)
 0 + 0 paired in sequencing
 0 + 0 read1
-`
+```
 
 ### stats/chloroplast/flye_pt_best_reads_across_junction.txt
 
-`	ext
+```	ext
 11210
-`
+```
 
 ### stats/chloroplast/hifiasm_pt_best.fa_20kb_junction.depth.txt
 
-`	ext
+```	ext
 ptg000119l_1	1	26792
 ptg000119l_1	2	26841
 ptg000119l_1	3	26869
@@ -97,11 +97,11 @@ ptg000119l_1	7	26977
 ptg000119l_1	8	26976
 ptg000119l_1	9	26889
 ptg000119l_1	10	26966
-`
+```
 
 ### stats/chloroplast/hifiasm_pt_best.fa_20kb_junction.flagstat.txt
 
-`	ext
+```	ext
 2016225 + 0 in total (QC-passed reads + QC-failed reads)
 2010918 + 0 primary
 0 + 0 secondary
@@ -112,17 +112,17 @@ ptg000119l_1	10	26966
 74790 + 0 primary mapped (3.72% : N/A)
 0 + 0 paired in sequencing
 0 + 0 read1
-`
+```
 
 ### stats/chloroplast/hifiasm_pt_best_reads_across_junction.txt
 
-`	ext
+```	ext
 13
-`
+```
 
 ### stats/mitochondria/.flagstat.txt
 
-`	ext
+```	ext
 2013730 + 0 in total (QC-passed reads + QC-failed reads)
 2010918 + 0 primary
 0 + 0 secondary
@@ -133,11 +133,11 @@ ptg000119l_1	10	26966
 49912 + 0 primary mapped (2.48% : N/A)
 0 + 0 paired in sequencing
 0 + 0 read1
-`
+```
 
 ### stats/mitochondria/01_PMAT2_first_run_mt.fa_20kb_junction.depth.txt
 
-`	ext
+```	ext
 L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-9932-27694+2451-	1	1356
 L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-9932-27694+2451-	2	1356
 L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-9932-27694+2451-	3	1356
@@ -148,17 +148,17 @@ L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-99
 L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-9932-27694+2451-	8	1359
 L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-9932-27694+2451-	9	1362
 L_767-2094-5210+39770+38761+6465-4108+4613+29017+27694+6010+29180-38761-39770-9932-27694+2451-	10	1362
-`
+```
 
 ### stats/mitochondria/01_PMAT2_first_run_mt_reads_across_junction.txt
 
-`	ext
+```	ext
 1200
-`
+```
 
 ### stats/mitochondria/03_PMAT2_reassembly_REFERENCE_mt.fa_20kb_junction.depth.txt
 
-`	ext
+```	ext
 L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+34270+26389+10952+33359+2827-5124+26389-2952-	1	1356
 L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+34270+26389+10952+33359+2827-5124+26389-2952-	2	1356
 L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+34270+26389+10952+33359+2827-5124+26389-2952-	3	1356
@@ -169,17 +169,17 @@ L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+3427
 L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+34270+26389+10952+33359+2827-5124+26389-2952-	8	1359
 L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+34270+26389+10952+33359+2827-5124+26389-2952-	9	1362
 L_950+27485-33359-21484+34638+32557+1627+30574-34638-21484-33359+27485+6858+34270+26389+10952+33359+2827-5124+26389-2952-	10	1362
-`
+```
 
 ### stats/mitochondria/03_PMAT2_reassembly_REFERENCE_mt_reads_across_junction.txt
 
-`	ext
+```	ext
 5
-`
+```
 
 ### stats/mitochondria/flye_mt_best.fa_20kb_junction.depth.txt
 
-`	ext
+```	ext
 contig_4783_1	1	3248
 contig_4783_1	2	3255
 contig_4783_1	3	3259
@@ -190,17 +190,17 @@ contig_4783_1	7	3592
 contig_4783_1	8	3596
 contig_4783_1	9	3596
 contig_4783_1	10	3592
-`
+```
 
 ### stats/mitochondria/flye_mt_best_reads_across_junction.txt
 
-`	ext
+```	ext
 192
-`
+```
 
 ### stats/mitochondria/hifiasm_mt_best.fa_20kb_junction.depth.txt
 
-`	ext
+```	ext
 ptg000162l_1	1	1251
 ptg000162l_1	2	1256
 ptg000162l_1	3	1283
@@ -211,11 +211,11 @@ ptg000162l_1	7	1466
 ptg000162l_1	8	1466
 ptg000162l_1	9	1479
 ptg000162l_1	10	1478
-`
+```
 
 ### stats/mitochondria/hifiasm_mt_best.fa_20kb_junction.flagstat.txt
 
-`	ext
+```	ext
 2013730 + 0 in total (QC-passed reads + QC-failed reads)
 2010918 + 0 primary
 0 + 0 secondary
@@ -226,13 +226,13 @@ ptg000162l_1	10	1478
 49912 + 0 primary mapped (2.48% : N/A)
 0 + 0 paired in sequencing
 0 + 0 read1
-`
+```
 
 ### stats/mitochondria/hifiasm_mt_best_reads_across_junction.txt
 
-`	ext
+```	ext
 1537
-`
+```
 
 ## Snapshot images
 
